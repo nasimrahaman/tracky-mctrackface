@@ -5,6 +5,7 @@ from random import randint
 from Antipasti.netdatautils import pickle, unpickle
 from numpy import inf
 
+
 class ExperienceDB(object):
     """Experience Database for DQNs."""
     def __init__(self, filename=None, maxsize=None):
