@@ -27,7 +27,7 @@ class Simulator(object):
 
 
 class FlySimulator(Simulator):
-    def __init__(self, path, seed, framesperstate=4, episodelength=40):
+    def __init__(self, path, track, framesperstate=4, episodelength=40):
         # Initialize superclass
         super(FlySimulator, self).__init__()
 
@@ -37,9 +37,9 @@ class FlySimulator(Simulator):
 
         # Meta
         self.path = path
-        self.seed = seed
         self.framesperstate = framesperstate
         self.episodelength = episodelength
+        self.track = track
 
         # Internal dont-fuck-with-me attributes
         # Cross
@@ -59,12 +59,6 @@ class FlySimulator(Simulator):
         self.filenames = None
         self.imshape = None
         self.parsedir()
-
-        # State tuple
-        self._state = None
-
-        # Make a persistent crosshair and init with seed
-        self.crosshair = self.seed
 
     @property
     def crosshair(self):
@@ -87,23 +81,36 @@ class FlySimulator(Simulator):
         assert value <= self._maxT
         self._episodeT = value
 
+    @property
+    def state(self):
+        return self.getstate()
+
     def initepisode(self, episodestart, episodestop):
         """Initialize an episode."""
         assert self._minT <= episodestart < episodestop <= self._maxT
 
+        # Set episode clock
         self.episodeT = self._episodestart = episodestart
         self._episodestop = episodestop
+        # Read seed crosshair coordinates from track
+        self.crosshair = self.track[self._episodestart]
 
     def getstate(self):
         # Fetch frames
         frames = self.fetchframes()
         # Fetch crosshair image
         crossimg = self.crosshair_image(imshape=self.imshape, coordinates=self.crosshair)
-        # TODO
+        # Concatenate frames and crossimg and add an extra (batch) dimension
+        state = np.concatenate((frames, crossimg), axis=0)[None, ...]
+        # Return
+        return state
+
+    def isterminal(self):
+        return self.episodeT == self._episodestop
 
     def resetenv(self):
         """Reset environment."""
-        self.crosshair = self.seed
+        pass
 
     def parsedir(self):
         # Filenames need to be sorted to get rid of the dictionary ordering
@@ -142,18 +149,22 @@ class FlySimulator(Simulator):
 
 class Track(object):
     """Class to wrap ctrax MATLAB file."""
-    def __init__(self, matfilepath, objectid):
+    def __init__(self, matfilepath, objectid, roundcoordinates=True):
         """
         :type matfilepath: str
         :param matfilepath: Path to matlab file.
 
         :type objectid: int
         :param objectid: ID of the object being tracked.
+
+        :type roundcoordinates: bool
+        :param roundcoordinates: Whether to round coordinates to the nearest integer
         """
 
         # Meta
         self.matfilepath = matfilepath
         self.objectid = objectid
+        self.roundcoordinates = roundcoordinates
 
         # Parse matfile to a position array
         self.posarray = ctrax2np(matpath=matfilepath)
@@ -161,7 +172,10 @@ class Track(object):
         assert self.objectid < self.posarray.shape[1], "Object ID does not correspond to an object in the ctrax file."
 
     def getposition(self, T):
-        return self.posarray[T, self.objectid, :]
+        if self.roundcoordinates:
+            return np.round(self.posarray[T, self.objectid, :]).astype('int')
+        else:
+            return self.posarray[T, self.objectid, :]
 
     def __getitem__(self, item):
         if isinstance(item, slice):
