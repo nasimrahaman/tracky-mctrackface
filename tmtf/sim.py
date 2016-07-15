@@ -27,7 +27,7 @@ class Simulator(object):
 
 
 class FlySimulator(Simulator):
-    def __init__(self, path, track, framesperstate=4, episodelength=40):
+    def __init__(self, path, track, stepsize=1, metatime=False, framesperstate=4, episodelength=40):
         # Initialize superclass
         super(FlySimulator, self).__init__()
 
@@ -40,6 +40,8 @@ class FlySimulator(Simulator):
         self.framesperstate = framesperstate
         self.episodelength = episodelength
         self.track = track
+        self.stepsize = stepsize
+        self.metatime = metatime
 
         # Internal dont-fuck-with-me attributes
         # Cross
@@ -104,6 +106,80 @@ class FlySimulator(Simulator):
         state = np.concatenate((frames, crossimg), axis=0)[None, ...]
         # Return
         return state
+
+    def getnextstate(self):
+        pass
+
+    def getreward(self):
+        # TODO
+        return None
+
+    def getresponse(self, action):
+        # Action must be a tensor which, when squeezed, gives a one-hot vector.
+        # Squeeze action
+        action = action.squeeze().argmax()
+
+        # Determine whether to evolve system after action
+        evolvesystem = not self.metatime and not self.isterminal()
+
+        # Initialize a reward
+        reward = None
+
+        # Switch cases for action
+        if action == 0:
+            # Move up
+            self.crosshair = self.crosshair + np.array([1, 0])
+            # Simulate
+            if evolvesystem:
+                self.episodeT += 1
+            else:
+                reward = self.getreward()
+
+        elif action == 1:
+            # Move down
+            # Move up
+            self.crosshair = self.crosshair + np.array([-1, 0])
+            # Simulate
+            if evolvesystem:
+                self.episodeT += 1
+            else:
+                reward = self.getreward()
+
+        elif action == 2:
+            # Move left
+            # Move up
+            self.crosshair = self.crosshair + np.array([0, -1])
+            # Simulate
+            if evolvesystem:
+                self.episodeT += 1
+            else:
+                reward = self.getreward()
+
+        elif action == 3:
+            # Move right
+            # Move up
+            self.crosshair = self.crosshair + np.array([0, 1])
+            # Simulate
+            if evolvesystem:
+                self.episodeT += 1
+            else:
+                reward = self.getreward()
+
+        elif action == 4:
+            # Metatime: Next
+            if not self.isterminal():
+                self.episodeT += 1
+            else:
+                reward = self.getreward()
+
+        else:
+            raise RuntimeError("Invalid action.")
+
+        # Get next state
+        nextstate = self.state
+
+        # Return
+        return reward, nextstate
 
     def isterminal(self):
         return self.episodeT == self._episodestop
@@ -187,11 +263,6 @@ class Track(object):
         else:
             raise NotImplementedError("`item` must be a slice or an integer.")
 
-        # Get position
-        pos = self.getposition(item)
+        # Get position and return
+        return self.getposition(item)
 
-        # Convert to a tuple if pos is just a 2-vector and return
-        if pos.ndim == 1:
-            return tuple(pos)
-        else:
-            return pos
