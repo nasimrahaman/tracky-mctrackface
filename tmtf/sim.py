@@ -137,7 +137,6 @@ class FlySimulator(Simulator):
 
         elif action == 1:
             # Move down
-            # Move up
             self.crosshair = self.crosshair + np.array([-1, 0])
             # Simulate
             if evolvesystem:
@@ -147,7 +146,6 @@ class FlySimulator(Simulator):
 
         elif action == 2:
             # Move left
-            # Move up
             self.crosshair = self.crosshair + np.array([0, -1])
             # Simulate
             if evolvesystem:
@@ -157,7 +155,6 @@ class FlySimulator(Simulator):
 
         elif action == 3:
             # Move right
-            # Move up
             self.crosshair = self.crosshair + np.array([0, 1])
             # Simulate
             if evolvesystem:
