@@ -166,10 +166,10 @@ class Track(object):
     def __getitem__(self, item):
         if isinstance(item, slice):
             assert item.stop < self.posarray.shape[0]
-            assert item.start > 0
+            assert item.start >= 0
         elif isinstance(item, int):
             assert item < self.posarray.shape[0]
-            assert item > 0
+            assert item >= 0
         else:
             raise NotImplementedError("`item` must be a slice or an integer.")
 
