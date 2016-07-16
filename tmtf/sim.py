@@ -27,21 +27,24 @@ class Simulator(object):
 
 
 class FlySimulator(Simulator):
-    def __init__(self, path, track, stepsize=1, metatime=False, framesperstate=4, episodelength=40):
+    def __init__(self, videoframes, track, stepsize=1, rewardmetric=None, metatime=False, framesperstate=4, episodelength=40):
         # Initialize superclass
         super(FlySimulator, self).__init__()
 
         # Assertions
-        assert os.path.isdir(path), "Path must be a directory."
         assert framesperstate >= 1, "Must have at least 1 frame per step."
 
         # Meta
-        self.path = path
+        self.videoframes = videoframes
         self.framesperstate = framesperstate
         self.episodelength = episodelength
         self.track = track
         self.stepsize = stepsize
         self.metatime = metatime
+
+        # Default reward metric: rewarded if target is localized to within
+        self.rewardmetric = lambda ist, soll: (np.linalg.norm(ist-soll) >= 5).astype('float') \
+            if rewardmetric is None else rewardmetric
 
         # Internal dont-fuck-with-me attributes
         # Cross
@@ -49,7 +52,7 @@ class FlySimulator(Simulator):
         # Min global time
         self._minT = self.framesperstate - 1
         # Max global time
-        self._maxT = len(self.filenames)
+        self._maxT = self.videoframes.maxT
         # Training could occur in episodes which may not span the entire video sequence. In general, the tracking
         # problem doesn't define an episode (unlike in Atari games, where there's a game-start and game-over).
         # The environment should support arbitrary episodes as long as it's valid.
@@ -57,10 +60,7 @@ class FlySimulator(Simulator):
         self._episodestart = None
         self._episodestop = None
 
-        # Parse directory
-        self.filenames = None
-        self.imshape = None
-        self.parsedir()
+        self.imshape = self.videoframes.imshape
 
     @property
     def crosshair(self):
@@ -87,6 +87,10 @@ class FlySimulator(Simulator):
     def state(self):
         return self.getstate()
 
+    @property
+    def reward(self):
+        return self.getreward()
+
     def initepisode(self, episodestart, episodestop):
         """Initialize an episode."""
         assert self._minT <= episodestart < episodestop <= self._maxT
@@ -99,7 +103,7 @@ class FlySimulator(Simulator):
 
     def getstate(self):
         # Fetch frames
-        frames = self.fetchframes()
+        frames = self.videoframes.fetchframes()
         # Fetch crosshair image
         crossimg = self.crosshair_image(imshape=self.imshape, coordinates=self.crosshair)
         # Concatenate frames and crossimg and add an extra (batch) dimension
@@ -110,9 +114,14 @@ class FlySimulator(Simulator):
     def getnextstate(self):
         pass
 
-    def getreward(self):
-        # TODO
-        return None
+    def getreward(self, T=None):
+        if T is None:
+            T = self.episodeT
+        # Get correct position
+        correctpos = self.track[T]
+        # Compute reward
+        reward = self.rewardmetric(ist=self.crosshair, soll=correctpos)
+        return reward
 
     def getresponse(self, action):
         # Action must be a tensor which, when squeezed, gives a one-hot vector.
@@ -185,21 +194,16 @@ class FlySimulator(Simulator):
         """Reset environment."""
         pass
 
-    def parsedir(self):
-        # Filenames need to be sorted to get rid of the dictionary ordering
-        self.filenames = sorted(glob.glob("{}/*.png".format(self.path)), key=lambda x: int(x.split('.')[0]))
-        self.imshape = imread(self.filenames[0]).shape
-
     def fetchframes(self, stop=None, numsteps=None):
         """Fetch `numsteps` frames starting at `start` and concatenate along the 0-th axis."""
-
+        # FIXME Get rid of this method
         if stop is None:
             stop = self.episodeT
 
         if numsteps is None:
             numsteps = self.framesperstate
 
-        frames = np.array([imread(self.filenames[framenum])
+        frames = np.array([imread(self.videoframes.filenames[framenum])
                            for framenum in range(stop - numsteps + 1, stop + 1)])[::-1, ...]
         return frames
 
@@ -263,3 +267,28 @@ class Track(object):
         # Get position and return
         return self.getposition(item)
 
+
+class VideoFrames(object):
+    def __init__(self, path):
+
+        assert os.path.isdir(path), "Path must be a directory."
+
+        # Meta
+        self.path = path
+
+        # Parse directory
+        self.filenames = None
+        self.imshape = None
+        self.maxT = len(self.filenames)
+
+    def parsedir(self):
+        # Filenames need to be sorted to get rid of the dictionary ordering
+        self.filenames = sorted(glob.glob("{}/*.png".format(self.path)), key=lambda x: int(x.split('.')[0]))
+        self.imshape = imread(self.filenames[0]).shape
+
+    def fetchframes(self, stop=None, numsteps=None):
+        """Fetch `numsteps` frames starting at `start` and concatenate along the 0-th axis."""
+
+        frames = np.array([imread(self.filenames[framenum])
+                           for framenum in range(stop - numsteps + 1, stop + 1)])[::-1, ...]
+        return frames
