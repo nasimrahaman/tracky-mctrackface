@@ -1,5 +1,3 @@
-__doc__ = """Fly Tracking Environment for Q-Learning."""
-
 import os
 import glob
 
@@ -7,6 +5,9 @@ import numpy as np
 from scipy.ndimage import imread, gaussian_filter
 
 from Antipasti.netdatautils import ctrax2np
+
+
+__doc__ = """Fly Tracking Environment for Q-Learning."""
 
 
 class Simulator(object):
@@ -27,7 +28,32 @@ class Simulator(object):
 
 
 class FlySimulator(Simulator):
-    def __init__(self, videoframes, track, stepsize=1, rewardmetric=None, metatime=False, framesperstate=4, episodelength=40):
+    def __init__(self, videoframes, track, actionresponse=None, rewardmetric=None, metatime=False, framesperstate=4,
+                 episodelength=40):
+        """
+        :type videoframes: VideoFrames
+        :param videoframes: Pre-parsed video frames.
+
+        :type track: Track
+        :param track: Pre-parsed tracks.
+
+        :type actionresponse: callable
+        :param actionresponse: Function returning the response for a given action, given the environment as an input.
+
+        :type rewardmetric: callable
+        :param rewardmetric: Function returning the reward given 'ist' (what it is) and 'soll' (what it should be)
+                             values. German is a fun language.
+
+        :type metatime: bool
+        :param metatime: Whether to use (Steffen's) meta-time.
+
+        :type framesperstate: int
+        :param framesperstate: Number of previous frames to include in the state. 4 sounds like a good number.
+
+        :type episodelength: int
+        :param episodelength: Length of a training episode.
+        """
+
         # Initialize superclass
         super(FlySimulator, self).__init__()
 
@@ -39,12 +65,18 @@ class FlySimulator(Simulator):
         self.framesperstate = framesperstate
         self.episodelength = episodelength
         self.track = track
-        self.stepsize = stepsize
         self.metatime = metatime
 
         # Default reward metric: rewarded if target is localized to within
         self.rewardmetric = lambda ist, soll: (np.linalg.norm(ist-soll) >= 5).astype('float') \
             if rewardmetric is None else rewardmetric
+
+        # Make default action response function if none provided
+        if actionresponse is None:
+            self.actionresponse = lambda action: action_response_factory()(self, action)
+        else:
+            assert callable(actionresponse), "Action Response function must be callable."
+            self.actionresponse = lambda action: actionresponse(self, action)
 
         # Internal dont-fuck-with-me attributes
         # Cross
@@ -103,16 +135,13 @@ class FlySimulator(Simulator):
 
     def getstate(self):
         # Fetch frames
-        frames = self.videoframes.fetchframes()
+        frames = self.videoframes.fetchframes(stop=self.episodeT, numsteps=self.framesperstate)
         # Fetch crosshair image
         crossimg = self.crosshair_image(imshape=self.imshape, coordinates=self.crosshair)
         # Concatenate frames and crossimg and add an extra (batch) dimension
         state = np.concatenate((frames, crossimg), axis=0)[None, ...]
         # Return
         return state
-
-    def getnextstate(self):
-        pass
 
     def getreward(self, T=None):
         if T is None:
@@ -128,61 +157,8 @@ class FlySimulator(Simulator):
         # Squeeze action
         action = action.squeeze().argmax()
 
-        # Determine whether to evolve system after action
-        evolvesystem = not self.metatime and not self.isterminal()
-
-        # Initialize a reward
-        reward = None
-
-        # Switch cases for action
-        if action == 0:
-            # Move up
-            self.crosshair = self.crosshair + np.array([1, 0])
-            # Simulate
-            if evolvesystem:
-                self.episodeT += 1
-            else:
-                reward = self.getreward()
-
-        elif action == 1:
-            # Move down
-            self.crosshair = self.crosshair + np.array([-1, 0])
-            # Simulate
-            if evolvesystem:
-                self.episodeT += 1
-            else:
-                reward = self.getreward()
-
-        elif action == 2:
-            # Move left
-            self.crosshair = self.crosshair + np.array([0, -1])
-            # Simulate
-            if evolvesystem:
-                self.episodeT += 1
-            else:
-                reward = self.getreward()
-
-        elif action == 3:
-            # Move right
-            self.crosshair = self.crosshair + np.array([0, 1])
-            # Simulate
-            if evolvesystem:
-                self.episodeT += 1
-            else:
-                reward = self.getreward()
-
-        elif action == 4:
-            # Metatime: Next
-            if not self.isterminal():
-                self.episodeT += 1
-            else:
-                reward = self.getreward()
-
-        else:
-            raise RuntimeError("Invalid action.")
-
-        # Get next state
-        nextstate = self.state
+        # Get response for an action
+        reward, nextstate = self.actionresponse(action=action)
 
         # Return
         return reward, nextstate
@@ -193,19 +169,6 @@ class FlySimulator(Simulator):
     def resetenv(self):
         """Reset environment."""
         pass
-
-    def fetchframes(self, stop=None, numsteps=None):
-        """Fetch `numsteps` frames starting at `start` and concatenate along the 0-th axis."""
-        # FIXME Get rid of this method
-        if stop is None:
-            stop = self.episodeT
-
-        if numsteps is None:
-            numsteps = self.framesperstate
-
-        frames = np.array([imread(self.videoframes.filenames[framenum])
-                           for framenum in range(stop - numsteps + 1, stop + 1)])[::-1, ...]
-        return frames
 
     @staticmethod
     def crosshair_image(imshape, coordinates, smooth=0):
@@ -292,3 +255,68 @@ class VideoFrames(object):
         frames = np.array([imread(self.filenames[framenum])
                            for framenum in range(stop - numsteps + 1, stop + 1)])[::-1, ...]
         return frames
+
+
+# Default action function
+def action_response_factory(stepsize=1):
+
+    def action_response(env, action):
+
+        # Determine whether to evolve system after action
+        evolvesystem = not env.metatime and not env.isterminal()
+
+        # Initialize a reward
+        reward = None
+
+        # Switch cases for action
+        if action == 0:
+            # Move up
+            env.crosshair = env.crosshair + np.array([stepsize, 0])
+            # Simulate
+            if evolvesystem:
+                env.episodeT += 1
+            else:
+                reward = env.getreward()
+
+        elif action == 1:
+            # Move down
+            env.crosshair = env.crosshair + np.array([-stepsize, 0])
+            # Simulate
+            if evolvesystem:
+                env.episodeT += 1
+            else:
+                reward = env.getreward()
+
+        elif action == 2:
+            # Move left
+            env.crosshair = env.crosshair + np.array([0, -stepsize])
+            # Simulate
+            if evolvesystem:
+                env.episodeT += 1
+            else:
+                reward = env.getreward()
+
+        elif action == 3:
+            # Move right
+            env.crosshair = env.crosshair + np.array([0, stepsize])
+            # Simulate
+            if evolvesystem:
+                env.episodeT += 1
+            else:
+                reward = env.getreward()
+
+        elif action == 4:
+            # Metatime: Next
+            if not env.isterminal():
+                env.episodeT += 1
+            else:
+                reward = env.getreward()
+
+        else:
+            raise RuntimeError("Invalid action.")
+
+        nextstate = env.state
+
+        return reward, nextstate
+
+    return action_response
