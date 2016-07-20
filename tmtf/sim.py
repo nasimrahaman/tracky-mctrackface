@@ -20,9 +20,6 @@ class Simulator(object):
     def getresponse(self, action):
         pass
 
-    def setstate(self, state):
-        pass
-
     def resetenv(self):
         pass
 
