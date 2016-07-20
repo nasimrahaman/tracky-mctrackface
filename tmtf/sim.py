@@ -125,7 +125,9 @@ class FlySimulator(Simulator):
 
     def initepisode(self, episodestart, episodestop):
         """Initialize an episode."""
-        assert self._minT <= episodestart < episodestop <= self._maxT
+
+        # Inequality episodestop < self._maxT is due to the nature of how states are built.
+        assert self._minT <= episodestart < episodestop < self._maxT
 
         # Set episode clock
         self.episodeT = self._episodestart = episodestart
@@ -134,8 +136,16 @@ class FlySimulator(Simulator):
         self.crosshair = self.track[self._episodestart]
 
     def getstate(self):
+        # State is a 5 channel tensor:
+
+        #     |    |     |     |     |
+        #     |    |     |     |    >|
+        # T = 1    0    -1    -2   Cross
+
+        # Where t = 0 is the current frame (i.e. the position of the crosshair)
+
         # Fetch frames
-        frames = self.videoframes.fetchframes(stop=self.episodeT, numsteps=self.framesperstate)
+        frames = self.videoframes.fetchframes(stop=(self.episodeT + 1), numsteps=self.framesperstate)
         # Fetch crosshair image
         crossimg = self.crosshair_image(imshape=self.imshape, coordinates=self.crosshair)
         # Concatenate frames and crossimg and add an extra (batch) dimension
