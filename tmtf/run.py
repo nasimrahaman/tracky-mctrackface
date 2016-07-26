@@ -3,7 +3,7 @@ __doc__ = """Training loop. Should be executable from the terminal/commandline w
 # TODO Argparse
 
 
-def fit(model, env, config, verbose=True):
+def fit(model, env, edb, config, verbose=True):
     """
     :type: model: Antipasti.netarchs.model
     :param model: Antipasti model.
@@ -11,8 +11,14 @@ def fit(model, env, config, verbose=True):
     :type env: sim.Simulator
     :param env: Environment object.
 
+    :type edb: edb.ExperienceDB
+    :param edb: Experience database.
+
     :type config: dict or str
     :param config: Configuration dictionary or path to a YAML configuration file.
+
+    :type verbose: str
+    :param verbose: quack quack.
     """
 
     # Make print function
@@ -36,7 +42,9 @@ def fit(model, env, config, verbose=True):
     # Episode counter
     episodecount = 0
     # Iteration counter
-    itercount = 0
+    itercount = -1
+    # Epoch counter
+    gamecount = 0
 
     # Begin loop
     while True:
@@ -48,7 +56,32 @@ def fit(model, env, config, verbose=True):
             _print("[-] Maximum number of iterations reached, aborting training...")
             break
 
-    # TODO
+        if gamecount > config['maxgamecount']:
+            _print("[-] Maximum number of epochs reached, aborting training...")
+            break
+
+        # Start new game
+        env.newgame()
+        gamecount += 1
+        isterminal = False
+
+        # Sample initial state from environment
+        state = env.getstate()
+
+        while not isterminal:
+            # ----- [GET XP] -----
+            # Sample from network
+            Q = model.classifier(state)
+            # Q is a tensor which can be squeezed to a vector, which can then be argmax-ed to get an action.
+            action = Q.squeeze().argmax()
+            # See what the environment thinks about this action
+            reward, newstate, isterminal = env.getresponse(action)
+            # Log to experience database
+            edb.log(state, action, reward, newstate, isterminal)
+
+            # ----- [LEARN FROM XP] -----
+            # TODO
+            pass
     pass
 
 

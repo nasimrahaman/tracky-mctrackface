@@ -27,9 +27,9 @@ class ExperienceDB(object):
         # Maximum database size
         self.maxsize = inf if maxsize is None else maxsize
 
-    def log(self, state, action, reward, newstate):
+    def log(self, state, action, reward, newstate, isterminal):
         # Append to database
-        self.db.append((state, action, reward, newstate))
+        self.db.append((state, action, reward, newstate, isterminal))
         # If database bigger than maxsize, pop the first entry
         if len(self.db) > self.maxsize:
             self.db.pop(0)

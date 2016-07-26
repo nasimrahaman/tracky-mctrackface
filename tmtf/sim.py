@@ -23,6 +23,12 @@ class Simulator(object):
     def resetenv(self):
         pass
 
+    def newgame(self):
+        pass
+
+    def isterminal(self):
+        pass
+
 
 class FlySimulator(Simulator):
     def __init__(self, videoframes, track, actionresponse=None, rewardmetric=None, metatime=False, framesperstate=4,
@@ -98,7 +104,9 @@ class FlySimulator(Simulator):
     @crosshair.setter
     def crosshair(self, value):
         # Assertions on value
-        # TODO
+        # value is a numpy array. Clip 0-th and 1-th coordinates so the crosshair doesn't run out of the image.
+        value[0] = np.clip(value[0], 0, self.imshape[0] - 1)
+        value[1] = np.clip(value[1], 0, self.imshape[1] - 1)
         # Set
         self._crosshair = value
 
@@ -153,22 +161,21 @@ class FlySimulator(Simulator):
     def getreward(self, T=None):
         if T is None:
             T = self.episodeT
+
         # Get correct position
         correctpos = self.track[T]
+
         # Compute reward
         reward = self.rewardmetric(ist=self.crosshair, soll=correctpos)
         return reward
 
     def getresponse(self, action):
-        # Action must be a tensor which, when squeezed, gives a one-hot vector.
-        # Squeeze action
-        action = action.squeeze().argmax()
 
         # Get response for an action
         reward, nextstate = self.actionresponse(action=action)
 
         # Return
-        return reward, nextstate
+        return reward, nextstate, self.isterminal()
 
     def isterminal(self):
         return self.episodeT == self._episodestop
@@ -176,6 +183,23 @@ class FlySimulator(Simulator):
     def resetenv(self):
         """Reset environment."""
         pass
+
+    def newgame(self, episodelength=None):
+        """Start a new game at random start and stop times and with a random object."""
+        if episodelength is None:
+            episodelength = self.episodelength
+
+        # Get the maximum possible T to start the game at
+        maxstart = self._maxT - episodelength - 1
+        # Pick a random episode start
+        episodestart = np.random.randint(low=self._minT, high=maxstart)
+        episodestop = episodestart + episodelength
+
+        # Initialize episode
+        self.initepisode(episodestart, episodestop)
+
+        # Pick a random object
+        self.track.selectrandomobj()
 
     @staticmethod
     def crosshair_image(imshape, coordinates, smooth=0):
@@ -210,13 +234,29 @@ class Track(object):
 
         # Meta
         self.matfilepath = matfilepath
-        self.objectid = objectid
+        self._objectid = objectid
         self.roundcoordinates = roundcoordinates
 
         # Parse matfile to a position array
         self.posarray = ctrax2np(matpath=matfilepath)
+        # Set min and max object IDs
+        self.maxobjid = self.posarray.shape[1] - 1
+        self.minobjid = 0
 
-        assert self.objectid < self.posarray.shape[1], "Object ID does not correspond to an object in the ctrax file."
+    @property
+    def objectid(self):
+        return self._objectid
+
+    @objectid.setter
+    def objectid(self, value):
+        assert value < self.posarray.shape[1], "Object ID does not correspond to an object in the ctrax file."
+        self._objectid = value
+
+    def selectrandomobj(self):
+        # Select a random object
+        objid = np.random.randint(low=self.minobjid, high=self.maxobjid + 1)
+        # Set objid
+        self.objectid = objid
 
     def getposition(self, T):
         if self.roundcoordinates:
@@ -249,7 +289,7 @@ class VideoFrames(object):
         # Parse directory
         self.filenames = None
         self.imshape = None
-        self.maxT = len(self.filenames)
+        self.maxT = len(self.filenames) - 1
 
     def parsedir(self):
         # Filenames need to be sorted to get rid of the dictionary ordering
