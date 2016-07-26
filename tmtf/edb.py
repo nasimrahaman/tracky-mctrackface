@@ -45,6 +45,10 @@ class ExperienceDB(object):
             expidx = randint(0, len(self.db) - 1)
         return self.db[expidx]
 
+    def batcher(self):
+        # batcher batcher batcher MUSHROOM MUSHROOM
+        pass
+
     def _write(self, filename=None):
         """
         Write database to file (for persistent backup).
