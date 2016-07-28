@@ -4,6 +4,7 @@ __doc__ = """Experience Database for the DeepQ Learner."""
 from random import randint
 from Antipasti.netdatautils import pickle, unpickle
 from numpy import inf
+import numpy as np
 
 
 class ExperienceDB(object):
@@ -45,9 +46,28 @@ class ExperienceDB(object):
             expidx = randint(0, len(self.db) - 1)
         return self.db[expidx]
 
-    def batcher(self):
-        # batcher batcher batcher MUSHROOM MUSHROOM
-        pass
+    # batcher batcher batcher MUSHROOM MUSHROOM
+    def batcher(self, targetnetwork, gamma):
+        """Sample from experience database and make a batch."""
+        # Fetch from experience database at random
+        state, action, reward, newstate, isterminal = self.fetch()
+        # Compute new Q with target network
+        newQ = targetnetwork.classifier(newstate)
+        # Compute target
+        if not isterminal:
+            reward = 0 if reward is None else reward
+            target = reward + gamma * np.max(newQ)
+        else:
+            target = reward
+
+        return state, target
+
+    def batcherbatcher(self, targetnetwork, gamma, batchsize=1):
+        """Sample from experience database multiple times and make a large batch."""
+        # FIXME: Batchsize = 1 for now.
+        assert batchsize == 1, "Batch-size must be 1 for now, though this is easily fixed (Read: Nasim is a lazy arse)."
+        # Call batcher.
+        return self.batcher(targetnetwork, gamma)
 
     def _write(self, filename=None):
         """

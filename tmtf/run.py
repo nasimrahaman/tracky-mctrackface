@@ -3,10 +3,10 @@ __doc__ = """Training loop. Should be executable from the terminal/commandline w
 # TODO Argparse
 
 
-def fit(model, env, edb, config, verbose=True):
+def fit(models, env, edb, config, verbose=True):
     """
-    :type: model: Antipasti.netarchs.model
-    :param model: Antipasti model.
+    :type: model: list or tuple
+    :param models: Tuple of (Q-Network, Target-Network).
 
     :type env: sim.Simulator
     :param env: Environment object.
@@ -30,11 +30,14 @@ def fit(model, env, edb, config, verbose=True):
     if isinstance(config, str):
         config = readconfigfile(config)
 
-    # Check model
-    # Model must be compiled
-    assert model.classifiertrainer is not None, "Model must be compiled."
-    # Model must have 'Q' in its output dictionary
-    assert 'Q' in model.classifiertrainer.outputs.keys(), "'Q' must be in model outputs."
+    # Read networks
+    model, targetmodel = models
+
+    # # Check models
+    assert hasattr(targetmodel, 'baggage'), "Target model must have baggage with target parameter update function."
+    assert "updatetargetparams" in targetmodel.baggage.keys(), "Target parameter update function 'updatetargetparams' " \
+                                                               "must be in targetmodel's baggage."
+    assert model.savedir is not None, "Model must have a place to save parameters."
 
     _print("[+] Tests passed.")
 
@@ -78,11 +81,24 @@ def fit(model, env, edb, config, verbose=True):
             reward, newstate, isterminal = env.getresponse(action)
             # Log to experience database
             edb.log(state, action, reward, newstate, isterminal)
+            # Set state to newstate
+            state = newstate
 
             # ----- [LEARN FROM XP] -----
-            # TODO
-            pass
-    pass
+            # Fetch new batch from experience database
+            x, yt = edb.batcherbatcher(targetnetwork=targetmodel, gamma=config['gamma'],
+                                       batchsize=config['batchsize'])
+            # Train on batch
+            # TODO: Build batch trainer. Remember to convert the network output to a scalar such that the error does
+            # TODO: not get propagated to the actions that were not taken. Use T.max(Q) to acheive this.
+            out = model.classifiertrainer(x, yt)
+            # Update target network parameters
+            targetmodel.baggage.updatetargetparams(params=model.params, decay=config['targetnetworkparamdecay'])
+
+            echomsg = "| Cost: {C} || Loss: {L} || Error: {E} |".format(C=out['C'], L=out['L'], E=out['E'])
+            _print(echomsg)
+
+    return model
 
 
 def readconfigfile(path):
@@ -92,8 +108,9 @@ def readconfigfile(path):
     :type path: str
     :param path: Path to configuration yaml file.
     """
-    assert path.endswith('.yml'), "Configuration file must be a YAML file."
-    # TODO
+    assert path.endswith('.yml') or path.endswith('.save'), "Configuration file must be a YAML file or a Pickled " \
+                                                            "dictionary object with '.save' extension."
+    # TODO Parse config file
     pass
 
 
