@@ -2,6 +2,8 @@ import net
 import sim
 import edb
 
+import numpy as np
+
 __doc__ = """Training loop. Should be made executable from the terminal/commandline with a config file."""
 
 # TODO Argparse
@@ -71,6 +73,7 @@ def fit(models, env, edb, config, verbose=True):
         env.newgame()
         gamecount += 1
         isterminal = False
+        gameclock = 0
 
         _print("| New Game |")
 
@@ -79,10 +82,18 @@ def fit(models, env, edb, config, verbose=True):
 
         while not isterminal:
             # ----- [GET XP] -----
-            # Sample from network
-            Q = model.classifier(state)
             # Q is a tensor which can be squeezed to a vector, which can then be argmax-ed to get an action.
-            action = Q.squeeze().argmax()
+            # Select an action (1 - eps) greedily
+            if config['greed'] >= np.random.uniform(low=0., high=1.):
+                # Sample Q from network
+                Q = model.classifier(state)
+                # Find action to take
+                action = Q.squeeze().argmax()
+                _print("| [T = {}] Taking action {} greedily. |".format(gameclock, action))
+            else:
+                action = np.random.randint(low=0, high=config['numactions'])
+                _print("| [T = {}] Taking action {} randomly. |".format(gameclock, action))
+
             # See what the environment thinks about this action
             reward, newstate, isterminal = env.getresponse(action)
             # Log to experience database
@@ -99,8 +110,12 @@ def fit(models, env, edb, config, verbose=True):
             # Update target network parameters
             targetmodel.baggage["updatetargetparams"](params=model.params, decay=config['targetnetworkparamdecay'])
 
+            # Print
             echomsg = "| Cost: {C} || Loss: {L} |".format(C=out['C'], L=out['L'])
             _print(echomsg)
+
+            # Increment counters
+            gameclock += 1
 
         # Check if the game was won
         gamewon = env.getreward() == 1.
@@ -162,7 +177,9 @@ def main(configpath):
               'targetnetworkparamdecay': 0.9,
               'maxitercount': 1000000,
               'maxgamecount': 2,
-              'saveevery': 500}
+              'saveevery': 500,
+              'numactions': 5,
+              'greed': 0.9}
 
     trainedmodel = fit(models, env, ed, config)
     trainedmodel.save('--final')
