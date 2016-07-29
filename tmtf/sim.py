@@ -220,7 +220,7 @@ class FlySimulator(Simulator):
 
 class Track(object):
     """Class to wrap ctrax MATLAB file."""
-    def __init__(self, matfilepath, objectid, roundcoordinates=True):
+    def __init__(self, matfilepath, objectid=0, roundcoordinates=True):
         """
         :type matfilepath: str
         :param matfilepath: Path to matlab file.

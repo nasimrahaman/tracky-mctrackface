@@ -1,3 +1,7 @@
+import net
+import sim
+import edb
+
 __doc__ = """Training loop. Should be executable from the terminal/commandline with a config file."""
 
 # TODO Argparse
@@ -113,7 +117,35 @@ def readconfigfile(path):
 
 
 def main(configpath):
-    pass
+    """Pretend this function doesn't exist."""
+
+    # FIXME: Debug and prettify.
+    if not __debug__:
+        return
+
+    # Build models
+    models = net.simple()
+
+    # ---Build Environment---
+    # Build videoframes
+    videopath = '/media/data/nrahaman/DeepTrack/Data/movies/1'
+    vf = sim.VideoFrames(videopath)
+    # Build track
+    trackpath = ''
+    tr = sim.Track(trackpath)
+    # Build Sim
+    env = sim.FlySimulator(vf, tr)
+
+    # ---Build EDB---
+    ed = edb.ExperienceDB(maxsize=100)
+
+    # ---Train---
+    # Build config
+    config = {'batchsize': 1,
+              'gamma': 0.9,
+              'targetnetworkparamdecay': 0.9}
+    trainedmodel = fit(models, env, ed, config)
+
 
 if __name__ == '__main__':
     pass

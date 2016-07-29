@@ -21,10 +21,6 @@ clv = lambda fmapsin, fmapsout, kersize: nk.convlayer(fmapsin=fmapsin, fmapsout=
 # Convlayer without activation
 cll = lambda fmapsin, fmapsout, kersize: nk.convlayer(fmapsin=fmapsin, fmapsout=fmapsout, kersize=kersize)
 
-# Convlayer with Sigmoid
-cls = lambda fmapsin, fmapsout, kersize: nk.convlayer(fmapsin=fmapsin, fmapsout=fmapsout, kersize=kersize,
-                                                      activation=ntl.sigmoid())
-
 # Strided convlayer with ELU (with autopad)
 scl = lambda fmapsin, fmapsout, kersize, padding=None: nk.convlayer(fmapsin=fmapsin, fmapsout=fmapsout,
                                                                     kersize=kersize,
@@ -34,53 +30,18 @@ scl = lambda fmapsin, fmapsout, kersize, padding=None: nk.convlayer(fmapsin=fmap
 # Strided 3x3 pool layerlayertrain or Antipasti.netarchs.layertrainyard
 spl = lambda: nk.poollayer(ds=[3, 3], stride=[2, 2], padding=[1, 1])
 
-# Strided 3x3 mean pool layer
-smpl = lambda ds=(2, 2): nk.poollayer(ds=list(ds), poolmode='mean')
-
-# 2x2 Upscale layer
-usl = lambda us=(2, 2): nk.upsamplelayer(us=list(us))
-
-# 2x2 Upscale layer with interpolation
-iusl = lambda us=(2, 2): nk.upsamplelayer(us=list(us), interpolate=True)
-
 # Batch-norm layer
 bn = lambda: nk.batchnormlayer(2, 0.9)
 
 # Softmax
 sml = lambda: nk.softmax(dim=2)
 
-# Identity
-idl = lambda: ak.idlayer()
-
-# Replicate
-repl = lambda numrep: ak.replicatelayer(numrep)
-
-# Merge
-merl = lambda numbranch: ak.mergelayer(numbranch)
-
-# Split in half
-sptl = lambda splitloc: ak.splitlayer(splits=splitloc, dim=2, issequence=False)
-
 # Dropout layer
 drl = lambda p=0.5: nk.noiselayer(noisetype='binomial', p=p)
 
-# Circuit layer
-crcl = lambda circuit: ak.circuitlayer(circuit, dim=2, issequence=False)
-
-# Parallel tracks
-trks = lambda *layers: na.layertrainyard([list(layers)])
-
-lty = lambda ty: na.layertrainyard(ty)
-
 
 def _build_simple(modelconfig=None):
-    """
-    Build a simple model.
-
-    :type modelconfig: dict
-    :param modelconfig: Model configuration.
-    """
-
+    """Make network."""
     if modelconfig is None:
         numout = 5
     else:
@@ -99,6 +60,13 @@ def _build_simple(modelconfig=None):
 
 
 def simple(modelconfig=None):
+    """
+    Build a simple model.
+
+    :type modelconfig: dict
+    :param modelconfig: Model configuration.
+    """
+
     # Build network
     network = _build_simple(modelconfig)
     # Build target network
