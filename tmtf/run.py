@@ -97,7 +97,7 @@ def fit(models, env, edb, config, verbose=True):
             # Train on batch
             out = model.classifiertrainer(x, yt)
             # Update target network parameters
-            targetmodel.baggage.updatetargetparams(params=model.params, decay=config['targetnetworkparamdecay'])
+            targetmodel.baggage["updatetargetparams"](params=model.params, decay=config['targetnetworkparamdecay'])
 
             echomsg = "| Cost: {C} || Loss: {L} |".format(C=out['C'], L=out['L'])
             _print(echomsg)
