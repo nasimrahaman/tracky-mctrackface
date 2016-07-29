@@ -89,6 +89,7 @@ def fit(models, env, edb, config, verbose=True):
                 Q = model.classifier(state)
                 # Find action to take
                 action = Q.squeeze().argmax()
+                _print("| [T = {}] Q-Values: {} |".format(gameclock, Q.squeeze()))
                 _print("| [T = {}] Taking action {} greedily. |".format(gameclock, action))
             else:
                 action = np.random.randint(low=0, high=config['numactions'])
@@ -111,8 +112,9 @@ def fit(models, env, edb, config, verbose=True):
             targetmodel.baggage["updatetargetparams"](params=model.params, decay=config['targetnetworkparamdecay'])
 
             # Print
-            echomsg = "| Cost: {C} || Loss: {L} |".format(C=out['C'], L=out['L'])
+            echomsg = "| Cost: {C} || Loss: {L} || Target: {targ} |".format(C=out['C'], L=out['L'], targ=yt)
             _print(echomsg)
+            _print("------------------------")
 
             # Increment counters
             gameclock += 1
@@ -120,9 +122,10 @@ def fit(models, env, edb, config, verbose=True):
         # Check if the game was won
         gamewon = env.getreward() == 1.
         _print("| [{}] Game {} won. |".format(*{True: ('+', 'was'), False: ('-', 'was not')}[gamewon]))
-
+        _print("\n\n")
         # Save parameters if required
         if itercount % config['saveevery'] == 0:
+            _print("[+] Saving model parameters...\n\n")
             model.save('--iter-{}-routine'.format(itercount))
             targetmodel.save('--iter-{}-routine'.format(itercount))
 
