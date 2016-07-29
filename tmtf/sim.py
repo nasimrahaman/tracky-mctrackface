@@ -1,11 +1,12 @@
 import os
 import glob
+import re
 
 import numpy as np
 from scipy.ndimage import imread, gaussian_filter
 
 from Antipasti.netdatautils import ctrax2np
-
+from Antipasti.pykit import try2int
 
 __doc__ = """Fly Tracking Environment for Q-Learning."""
 
@@ -31,8 +32,8 @@ class Simulator(object):
 
 
 class FlySimulator(Simulator):
-    def __init__(self, videoframes, track, actionresponse=None, rewardmetric=None, metatime=False, framesperstate=4,
-                 episodelength=40):
+    def __init__(self, videoframes, track, actionresponse=None, rewardmetric=None, metatime=True, framesperstate=4,
+                 episodelength=40, markersize=8, stepsize=4):
         """
         :type videoframes: VideoFrames
         :param videoframes: Pre-parsed video frames.
@@ -69,14 +70,16 @@ class FlySimulator(Simulator):
         self.episodelength = episodelength
         self.track = track
         self.metatime = metatime
+        self.markersize = markersize
+        self.stepsize = stepsize
 
         # Default reward metric: rewarded if target is localized to within
-        self.rewardmetric = lambda ist, soll: (np.linalg.norm(ist-soll) >= 5).astype('float') \
+        self.rewardmetric = lambda ist, soll: (np.linalg.norm(ist-soll) <= 5).astype('float') \
             if rewardmetric is None else rewardmetric
 
         # Make default action response function if none provided
         if actionresponse is None:
-            self.actionresponse = lambda action: action_response_factory()(self, action)
+            self.actionresponse = lambda action: action_response_factory(stepsize=self.stepsize)(self, action)
         else:
             assert callable(actionresponse), "Action Response function must be callable."
             self.actionresponse = lambda action: actionresponse(self, action)
@@ -152,7 +155,8 @@ class FlySimulator(Simulator):
         # Fetch frames
         frames = self.videoframes.fetchframes(stop=(self.episodeT + 1), numsteps=self.framesperstate)
         # Fetch crosshair image
-        crossimg = self.crosshair_image(imshape=self.imshape, coordinates=self.crosshair)
+        crossimg = self.crosshair_image(imshape=self.imshape, coordinates=self.crosshair,
+                                        size=self.markersize)[None, ...]
         # Concatenate frames and crossimg and add an extra (batch) dimension
         state = np.concatenate((frames, crossimg), axis=0)[None, ...]
         # Return
@@ -195,22 +199,26 @@ class FlySimulator(Simulator):
         episodestart = np.random.randint(low=self._minT, high=maxstart)
         episodestop = episodestart + episodelength
 
-        # Initialize episode
-        self.initepisode(episodestart, episodestop)
-
         # Pick a random object
         self.track.selectrandomobj()
 
+        # Initialize episode
+        self.initepisode(episodestart, episodestop)
+
     @staticmethod
-    def crosshair_image(imshape, coordinates, smooth=0):
+    def crosshair_image(imshape, coordinates, size=8, smooth=0):
         """
         Function to make a zero image of shape `imshape`, place a white (one) pixel or a gaussian blob at the given
         `coordinates`.
         """
         # make CROSShair IMaGe
         crossimg = np.zeros(shape=imshape)
+        # Get coordinates of the crosshair
+        y, x = coordinates
+        # Halve the size for indexing
+        halfsize = size//2
         # Place a pixel
-        crossimg[coordinates] = 1.
+        crossimg[(y - halfsize):(y + halfsize), (x - halfsize):(x + halfsize)] = 1.
         # Smooth if required to
         if smooth != 0:
             crossimg = gaussian_filter(crossimg, sigma=smooth)
@@ -289,11 +297,14 @@ class VideoFrames(object):
         # Parse directory
         self.filenames = None
         self.imshape = None
+        self.parsedir()
+
         self.maxT = len(self.filenames) - 1
 
     def parsedir(self):
         # Filenames need to be sorted to get rid of the dictionary ordering
-        self.filenames = sorted(glob.glob("{}/*.png".format(self.path)), key=lambda x: int(x.split('.')[0]))
+        self.filenames = sorted(glob.glob(self.path + "/*.png"),
+                                key=lambda x: [try2int(c) for c in re.split('([0-9]+)', x)])
         self.imshape = imread(self.filenames[0]).shape
 
     def fetchframes(self, stop=None, numsteps=None):
@@ -301,6 +312,8 @@ class VideoFrames(object):
 
         frames = np.array([imread(self.filenames[framenum])
                            for framenum in range(stop - numsteps + 1, stop + 1)])[::-1, ...]
+        # Normalize frame between 0 and 1 and return
+        frames = frames/255.
         return frames
 
 

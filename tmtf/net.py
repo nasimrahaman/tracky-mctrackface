@@ -82,7 +82,7 @@ def simple(modelconfig=None):
     network.yt = T.vector('model-yt:{}'.format(id(network)))
     # Compute loss and cost
     # network.y.shape = (bs, numout, 1, 1). Compute mean along all axes.
-    network.L = (T.max(T.flatten(network.y, outdim=2), axis=1) - network.yt)**2
+    network.L = ((T.max(T.flatten(network.y, outdim=2), axis=1) - network.yt)**2).mean()
     network.baggage["l2"] = nt.lp(network.params, [(2, 0.0005)])
     network.C = network.L + network.baggage["l2"]
     # Compute gradients
