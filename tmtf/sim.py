@@ -335,7 +335,7 @@ def action_response_factory(stepsize=1):
             # Simulate
             if evolvesystem:
                 env.episodeT += 1
-            else:
+            if env.isterminal():
                 reward = env.getreward()
 
         elif action == 1:
@@ -344,7 +344,7 @@ def action_response_factory(stepsize=1):
             # Simulate
             if evolvesystem:
                 env.episodeT += 1
-            else:
+            if env.isterminal():
                 reward = env.getreward()
 
         elif action == 2:
@@ -353,7 +353,7 @@ def action_response_factory(stepsize=1):
             # Simulate
             if evolvesystem:
                 env.episodeT += 1
-            else:
+            if env.isterminal():
                 reward = env.getreward()
 
         elif action == 3:
@@ -362,7 +362,7 @@ def action_response_factory(stepsize=1):
             # Simulate
             if evolvesystem:
                 env.episodeT += 1
-            else:
+            if env.isterminal():
                 reward = env.getreward()
 
         elif action == 4:
