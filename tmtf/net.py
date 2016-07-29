@@ -5,6 +5,7 @@ import Antipasti.netkit as nk
 import Antipasti.netarchs as na
 import Antipasti.archkit as ak
 import Antipasti.netools as ntl
+import Antipasti.netrain as nt
 import Antipasti.backend as A
 
 __doc__ = """Model Zoo"""
@@ -101,17 +102,36 @@ def simple(modelconfig=None):
     # Build network
     network = _build_simple(modelconfig)
     # Build target network
-    targetnetwork = network = _build_simple(modelconfig)
+    targetnetwork = _build_simple(modelconfig)
 
     # Compile inference function for network
     network.classifier = A.function(inputs=[network.x], outputs=network.y, allow_input_downcast=True)
     # Compile inference function for target network
     targetnetwork.classifier = A.function(inputs=[targetnetwork.x], outputs=targetnetwork.y, allow_input_downcast=True)
 
-    # TODO: Compile trainer for network
-    pass
+    # Compile trainer for network
+    # Redefine target to a scalar
+    network.yt = T.vector('model-yt:{}'.format(id(network)))
+    # Compute loss and cost
+    # network.y.shape = (bs, numout, 1, 1). Compute mean along all axes.
+    network.L = (T.max(T.flatten(network.y, outdim=2), axis=1) - network.yt)**2
+    network.baggage["l2"] = nt.lp(network.params, [(2, 0.0005)])
+    network.C = network.L + network.baggage["l2"]
+    # Compute gradients
+    network.dC = T.grad(network.C, wrt=network.params, disconnected_inputs='warn')
+    # Get updates
+    network.getupdates(method='rmsprop', learningrate=0.0005, rho=0.9)
+    # Compile trainer
+    network.classifiertrainer = A.function(inputs=[network.x, network.yt], outputs={'C': network.C, 'L': network.L},
+                                           updates=network.updates, allow_input_downcast=True)
 
-    # TODO: Make update function for targetnetwork and add to its baggage
-    pass
+    # Make update function for targetnetwork and add to its baggage
+    def updatetargetparams(params, decay=0.9):
+        curparams, newparams = targetnetwork.params, params
+        for curparam, newparam in zip(curparams, newparams):
+            paramupdate = decay * curparam.get_value() + (1 - decay) * newparam.get_value()
+            curparam.set_value(paramupdate)
+
+    targetnetwork.baggage["updatetargetparams"] = updatetargetparams
 
     return network, targetnetwork

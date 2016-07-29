@@ -89,13 +89,11 @@ def fit(models, env, edb, config, verbose=True):
             x, yt = edb.batcherbatcher(targetnetwork=targetmodel, gamma=config['gamma'],
                                        batchsize=config['batchsize'])
             # Train on batch
-            # TODO: Build batch trainer. Remember to convert the network output to a scalar such that the error does
-            # TODO: not get propagated to the actions that were not taken. Use T.max(Q) to acheive this.
             out = model.classifiertrainer(x, yt)
             # Update target network parameters
             targetmodel.baggage.updatetargetparams(params=model.params, decay=config['targetnetworkparamdecay'])
 
-            echomsg = "| Cost: {C} || Loss: {L} || Error: {E} |".format(C=out['C'], L=out['L'], E=out['E'])
+            echomsg = "| Cost: {C} || Loss: {L} |".format(C=out['C'], L=out['L'])
             _print(echomsg)
 
     return model
@@ -113,6 +111,9 @@ def readconfigfile(path):
     # TODO Parse config file
     pass
 
+
+def main(configpath):
+    pass
 
 if __name__ == '__main__':
     pass
