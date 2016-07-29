@@ -21,6 +21,9 @@ class Simulator(object):
     def getresponse(self, action):
         pass
 
+    def getreward(self):
+        pass
+
     def resetenv(self):
         pass
 
@@ -312,8 +315,11 @@ class VideoFrames(object):
 
         frames = np.array([imread(self.filenames[framenum])
                            for framenum in range(stop - numsteps + 1, stop + 1)])[::-1, ...]
-        # Normalize frame between 0 and 1 and return
+
+        # Normalize frame to zero mean and unit variance and return
         frames = frames/255.
+        frames = (frames - frames.mean())/(frames.std() + 1e-8)
+
         return frames
 
 

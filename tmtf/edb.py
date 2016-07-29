@@ -60,6 +60,11 @@ class ExperienceDB(object):
         else:
             target = reward
 
+        # Cast target to a numpy array and make sure it's a vector
+        target = np.array(target)
+        target = np.array([target]) if target.ndim == 0 else target
+        assert target.ndim == 1
+
         return state, target
 
     def batcherbatcher(self, targetnetwork, gamma, batchsize=1):

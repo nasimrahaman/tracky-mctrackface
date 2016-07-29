@@ -101,5 +101,7 @@ def simple(modelconfig=None):
             curparam.set_value(paramupdate)
 
     targetnetwork.baggage["updatetargetparams"] = updatetargetparams
+    # Set target networks param
+    targetnetwork.params = network.params
 
     return network, targetnetwork

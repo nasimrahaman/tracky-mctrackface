@@ -2,7 +2,7 @@ import net
 import sim
 import edb
 
-__doc__ = """Training loop. Should be executable from the terminal/commandline with a config file."""
+__doc__ = """Training loop. Should be made executable from the terminal/commandline with a config file."""
 
 # TODO Argparse
 
@@ -72,6 +72,8 @@ def fit(models, env, edb, config, verbose=True):
         gamecount += 1
         isterminal = False
 
+        _print("| New Game |")
+
         # Sample initial state from environment
         state = env.getstate()
 
@@ -100,6 +102,15 @@ def fit(models, env, edb, config, verbose=True):
             echomsg = "| Cost: {C} || Loss: {L} |".format(C=out['C'], L=out['L'])
             _print(echomsg)
 
+        # Check if the game was won
+        gamewon = env.getreward() == 1.
+        _print("| [{}] Game {} won. |".format(*{True: ('+', 'was'), False: ('-', 'was not')}[gamewon]))
+
+        # Save parameters if required
+        if itercount % config['saveevery'] == 0:
+            model.save('--iter-{}-routine'.format(itercount))
+            targetmodel.save('--iter-{}-routine'.format(itercount))
+
     return model
 
 
@@ -123,15 +134,12 @@ def main(configpath):
     if not __debug__:
         return
 
-    # Build models
-    models = net.simple()
-
     # ---Build Environment---
     # Build videoframes
     videopath = '/media/data/nrahaman/DeepTrack/Data/movies/1'
     vf = sim.VideoFrames(videopath)
     # Build track
-    trackpath = ''
+    trackpath = '/home/nrahaman/Python/Antipasti/Projects/DeepTrack/tracks/1/ctrax_results.mat'
     tr = sim.Track(trackpath)
     # Build Sim
     env = sim.FlySimulator(vf, tr)
@@ -139,13 +147,26 @@ def main(configpath):
     # ---Build EDB---
     ed = edb.ExperienceDB(maxsize=100)
 
+    # ---Build models---
+    models = net.simple()
+
+    savedirmodel = '/media/data/nrahaman/NotNeuro/tracky/Try1/Value/Weights/'
+    savedirtarget = '/media/data/nrahaman/NotNeuro/tracky/Try1/Target/Weights/'
+    models[0].savedir = savedirmodel
+    models[1].savedir = savedirtarget
+
     # ---Train---
     # Build config
     config = {'batchsize': 1,
               'gamma': 0.9,
-              'targetnetworkparamdecay': 0.9}
+              'targetnetworkparamdecay': 0.9,
+              'maxitercount': 1000000,
+              'maxgamecount': 2,
+              'saveevery': 500}
+
     trainedmodel = fit(models, env, ed, config)
+    trainedmodel.save('--final')
 
 
 if __name__ == '__main__':
-    pass
+    main(None)
