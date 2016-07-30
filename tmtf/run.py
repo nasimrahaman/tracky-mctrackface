@@ -132,6 +132,7 @@ def fit(models, env, edb, config, verbose=True):
 
             # Increment counters
             gameclock += 1
+            itercount += 1
 
         # Check if the game was won
         gamewon = env.getreward() == 1.
@@ -139,7 +140,7 @@ def fit(models, env, edb, config, verbose=True):
         _print("\n")
         # Save parameters if required
         if itercount % config['saveevery'] == 0:
-            _print("[+] Saving model parameters...\n")
+            _print("[+] Saving model parameters at iteration {}...\n".format(itercount))
             model.save('--iter-{}-routine'.format(itercount))
             targetmodel.save('--iter-{}-routine'.format(itercount))
 
@@ -193,7 +194,7 @@ def main(configpath):
               'gamma': 0.9,
               'targetnetworkparamdecay': 0.9,
               'maxitercount': 1000000,
-              'maxgamecount': 2,
+              'maxgamecount': 100000,
               'saveevery': 500,
               'numactions': 5,
               'greed': 0.9}
