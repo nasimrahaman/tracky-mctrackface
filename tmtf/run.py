@@ -1,6 +1,6 @@
 import net
 import sim
-import edb
+import edb as edb_
 
 import numpy as np
 
@@ -106,10 +106,24 @@ def fit(models, env, edb, config, verbose=True):
             # Fetch new batch from experience database
             x, yt = edb.batcherbatcher(targetnetwork=targetmodel, gamma=config['gamma'],
                                        batchsize=config['batchsize'])
-            # Train on batch
-            out = model.classifiertrainer(x, yt)
-            # Update target network parameters
-            targetmodel.baggage["updatetargetparams"](params=model.params, decay=config['targetnetworkparamdecay'])
+
+            try:
+                # Train on batch
+                out = model.classifiertrainer(x, yt)
+                # Update target network parameters
+                targetmodel.baggage["updatetargetparams"](params=model.params,
+                                                          decay=config['targetnetworkparamdecay'])
+
+            except Exception as e:
+                # Print diagnostics
+                _print("[-] Exception raised while training model. Printing Diagnostics:")
+                diagnostics = {'yt.shape': yt.shape,
+                               'x.shape': x.shape,
+                               'len(edb.db)': len(edb.db)}
+                for diagitem, diagres in diagnostics.items():
+                    _print(">>> {} = {}".format(diagitem, diagres))
+                # Make a substitute out such that training could continue
+                out = {'C': 'Error', 'L': 'Error', 'yt': yt}
 
             # Print
             echomsg = "| Cost: {C} || Loss: {L} || Target: {targ} |".format(C=out['C'], L=out['L'], targ=yt)
@@ -122,10 +136,10 @@ def fit(models, env, edb, config, verbose=True):
         # Check if the game was won
         gamewon = env.getreward() == 1.
         _print("| [{}] Game {} won. |".format(*{True: ('+', 'was'), False: ('-', 'was not')}[gamewon]))
-        _print("\n\n")
+        _print("\n")
         # Save parameters if required
         if itercount % config['saveevery'] == 0:
-            _print("[+] Saving model parameters...\n\n")
+            _print("[+] Saving model parameters...\n")
             model.save('--iter-{}-routine'.format(itercount))
             targetmodel.save('--iter-{}-routine'.format(itercount))
 
@@ -163,7 +177,7 @@ def main(configpath):
     env = sim.FlySimulator(vf, tr)
 
     # ---Build EDB---
-    ed = edb.ExperienceDB(maxsize=100)
+    ed = edb_.ExperienceDB(maxsize=100)
 
     # ---Build models---
     models = net.simple()
