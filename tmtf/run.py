@@ -92,7 +92,8 @@ def fit(models, env, edb, config, verbose=True):
                 _print("| [T = {}] Q-Values: {} |".format(gameclock, Q.squeeze()))
                 _print("| [T = {}] Taking action {} greedily. |".format(gameclock, action))
             else:
-                action = np.random.randint(low=0, high=config['numactions'])
+                # action = np.random.randint(low=0, high=config['numactions'])
+                action = 4
                 _print("| [T = {}] Taking action {} randomly. |".format(gameclock, action))
 
             # See what the environment thinks about this action
