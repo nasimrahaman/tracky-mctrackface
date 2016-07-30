@@ -93,8 +93,12 @@ def fit(models, env, edb, config, verbose=True):
                 _print("| [T = {}] Taking action {} greedily. |".format(gameclock, action))
             else:
                 # action = np.random.randint(low=0, high=config['numactions'])
-                action = 4
-                _print("| [T = {}] Taking action {} randomly. |".format(gameclock, action))
+                if config['pressure'] >= np.random.uniform(low=0., high=1.):
+                    action = 4
+                    _print("| [T = {}] Evolving System (action = 4)... |".format(gameclock, action))
+                else:
+                    action = np.random.randint(low=0, high=config['numactions'])
+                    _print("| [T = {}] Taking action {} randomly. |".format(gameclock, action))
 
             # See what the environment thinks about this action
             reward, newstate, isterminal = env.getresponse(action)
@@ -198,7 +202,8 @@ def main(configpath):
               'maxgamecount': 100000,
               'saveevery': 500,
               'numactions': 5,
-              'greed': 0.9}
+              'greed': 0.8,
+              'pressure': 0.5}
 
     trainedmodel = fit(models, env, ed, config)
     trainedmodel.save('--final')
