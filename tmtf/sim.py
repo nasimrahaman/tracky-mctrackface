@@ -83,7 +83,7 @@ class FlySimulator(Simulator):
         self.stepsize = stepsize
 
         # Default reward metric: rewarded if target is localized to within
-        self.rewardmetric = lambda ist, soll: (np.linalg.norm(ist-soll) <= rewardradius).astype('float') \
+        self.rewardmetric = lambda ist, soll: (1. if np.linalg.norm(ist-soll) <= rewardradius else -1.) \
             if rewardmetric is None else rewardmetric
 
         # Make default action response function if none provided
