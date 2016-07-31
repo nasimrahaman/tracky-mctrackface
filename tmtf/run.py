@@ -106,7 +106,7 @@ def fit(models, env, edb, config, verbose=True):
             # Get state info and print
             si = env.stateinfo()
             _print("| [T = {} + 1] || Crosshair @ {normalized_crosshair} |"
-                   "| Target @ {normalized_target} || Distance to Target: {distance2target} |".format(**si))
+                   "| Target @ {normalized_target} || Distance to Target: {distance2target}|".format(gameclock,**si))
 
             # Log to experience database
             edb.log(state, action, reward, newstate, isterminal)
