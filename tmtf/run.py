@@ -142,6 +142,13 @@ def fit(models, env, edb, config, verbose=True):
         # Check if the game was won
         gamewon = env.getreward() == 1.
         _print("| [{}] Game {} won. |".format(*{True: ('+', 'was'), False: ('-', 'was not')}[gamewon]))
+
+        try:
+            dist = lambda ist, soll: np.linalg.norm(ist - soll)
+            _print("| Distance to correct marker position: {} |".format(dist(env.track[env.episodeT], env.crosshair)))
+        except AttributeError:
+            pass
+
         _print("\n")
         # Save parameters if required
         if itercount % config['saveevery'] == 0:

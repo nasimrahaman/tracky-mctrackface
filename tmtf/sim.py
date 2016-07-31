@@ -59,6 +59,12 @@ class FlySimulator(Simulator):
 
         :type episodelength: int
         :param episodelength: Length of a training episode.
+
+        :type markersize: int
+        :param markersize: Size (in pixels) of the crosshair (position marker) in the image.
+
+        :type stepsize: int
+        :param stepsize: By how many pixels to move the marker given an action. See `action_response_factory`.
         """
 
         # Initialize superclass
@@ -214,12 +220,22 @@ class FlySimulator(Simulator):
         Function to make a zero image of shape `imshape`, place a white (one) pixel or a gaussian blob at the given
         `coordinates`.
         """
+        assert len(imshape) == 2, "Imshape must be a tuple of length 2."
+        imh, imw = imshape
         # make CROSShair IMaGe
         crossimg = np.zeros(shape=imshape)
         # Get coordinates of the crosshair
         y, x = coordinates
         # Halve the size for indexing
         halfsize = size//2
+        # Clip coordinates to keep the marker within the image
+        y = np.clip(y, halfsize, imh - halfsize)
+        x = np.clip(x, halfsize, imw - halfsize)
+        # Assertions just to be sure
+        assert (y - halfsize) >= 0
+        assert (x - halfsize) >= 0
+        assert (y + halfsize) <= imh
+        assert (x + halfsize) <= imw
         # Place a pixel
         crossimg[(y - halfsize):(y + halfsize), (x - halfsize):(x + halfsize)] = 1.
         # Smooth if required to
@@ -336,7 +352,7 @@ def action_response_factory(stepsize=1):
 
         # Switch cases for action
         if action == 0:
-            # Move up
+            # Move down
             env.crosshair = env.crosshair + np.array([stepsize, 0])
             # Simulate
             if evolvesystem:
@@ -345,7 +361,7 @@ def action_response_factory(stepsize=1):
                 reward = env.getreward()
 
         elif action == 1:
-            # Move down
+            # Move up
             env.crosshair = env.crosshair + np.array([-stepsize, 0])
             # Simulate
             if evolvesystem:
