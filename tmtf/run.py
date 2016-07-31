@@ -102,8 +102,15 @@ def fit(models, env, edb, config, verbose=True):
 
             # See what the environment thinks about this action
             reward, newstate, isterminal = env.getresponse(action)
+
+            # Get state info and print
+            si = env.stateinfo()
+            _print("| [T = {} + 1] || Crosshair @ {normalized_crosshair} |"
+                   "| Target @ {normalized_target} || Distance to Target: {distance2target} |".format(**si))
+
             # Log to experience database
             edb.log(state, action, reward, newstate, isterminal)
+
             # Set state to newstate
             state = newstate
 
@@ -187,7 +194,7 @@ def main(configpath):
     trackpath = '/home/nrahaman/Python/Antipasti/Projects/DeepTrack/tracks/1/ctrax_results.mat'
     tr = sim.Track(trackpath)
     # Build Sim
-    env = sim.FlySimulator(vf, tr)
+    env = sim.FlySimulator(vf, tr, episodelength=10)
 
     # ---Build EDB---
     ed = edb_.ExperienceDB(maxsize=100)
@@ -209,7 +216,7 @@ def main(configpath):
               'maxgamecount': 100000,
               'saveevery': 500,
               'numactions': 5,
-              'greed': 0.8,
+              'greed': 0.9,
               'pressure': 0.5}
 
     trainedmodel = fit(models, env, ed, config)
