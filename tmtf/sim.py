@@ -223,15 +223,15 @@ class FlySimulator(Simulator):
         # Get image shape
         imh, imw = self.imshape
         # Normalize crosshair position
-        ncy = cy/(imh - 1)
-        ncx = cx/(imw - 1)
+        ncy = cy/(float(imh) - 1.)
+        ncx = cx/(float(imw) - 1.)
         # Normalize target position
-        nty = ty/(imh - 1)
-        ntx = tx/(imw - 1)
+        nty = ty/(float(imh) - 1.)
+        ntx = tx/(float(imw) - 1.)
         # Get distance to target
         dist2targ = np.linalg.norm(self.crosshair - self.track[self.episodeT])
         # Build dict and return
-        return {'crosshair': self.crosshair,
+        return {'crosshair': tuple(self.crosshair),
                 'normalized_crosshair': (ncy, ncx),
                 'target': (ty, tx),
                 'normalized_target': (nty, ntx),
