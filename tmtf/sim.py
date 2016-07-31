@@ -185,10 +185,10 @@ class FlySimulator(Simulator):
     def getresponse(self, action):
 
         # Get response for an action
-        reward, nextstate = self.actionresponse(action=action)
+        reward, nextstate, terminate = self.actionresponse(action=action)
 
         # Return
-        return reward, nextstate, self.isterminal()
+        return reward, nextstate, (self.isterminal() or terminate)
 
     def isterminal(self):
         return self.episodeT == self._episodestop
@@ -363,7 +363,7 @@ class VideoFrames(object):
 
 
 # Default action function
-def action_response_factory(stepsize=1):
+def action_response_factory(stepsize=1, distancetolerance=40):
 
     def action_response(env, action):
 
@@ -422,6 +422,9 @@ def action_response_factory(stepsize=1):
 
         nextstate = env.state
 
-        return reward, nextstate
+        # Terminate if the crosshair has wandered off too far
+        terminate = env.stateinfo()['distance2target'] > distancetolerance
+
+        return reward, nextstate, terminate
 
     return action_response
