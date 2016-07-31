@@ -194,7 +194,7 @@ def main(configpath):
     trackpath = '/home/nrahaman/Python/Antipasti/Projects/DeepTrack/tracks/1/ctrax_results.mat'
     tr = sim.Track(trackpath)
     # Build Sim
-    env = sim.FlySimulator(vf, tr, episodelength=10)
+    env = sim.FlySimulator(vf, tr, episodelength=10, rewardradius=15)
 
     # ---Build EDB---
     ed = edb_.ExperienceDB(maxsize=100)

@@ -36,7 +36,7 @@ class Simulator(object):
 
 class FlySimulator(Simulator):
     def __init__(self, videoframes, track, actionresponse=None, rewardmetric=None, metatime=True, framesperstate=4,
-                 episodelength=40, markersize=8, stepsize=4):
+                 episodelength=40, markersize=8, stepsize=4, rewardradius=5):
         """
         :type videoframes: VideoFrames
         :param videoframes: Pre-parsed video frames.
@@ -83,7 +83,7 @@ class FlySimulator(Simulator):
         self.stepsize = stepsize
 
         # Default reward metric: rewarded if target is localized to within
-        self.rewardmetric = lambda ist, soll: (np.linalg.norm(ist-soll) <= 5).astype('float') \
+        self.rewardmetric = lambda ist, soll: (np.linalg.norm(ist-soll) <= rewardradius).astype('float') \
             if rewardmetric is None else rewardmetric
 
         # Make default action response function if none provided
