@@ -214,6 +214,29 @@ class FlySimulator(Simulator):
         # Initialize episode
         self.initepisode(episodestart, episodestop)
 
+    def stateinfo(self):
+        # Normalize crosshair position
+        # Get crosshair position
+        cy, cx = self.crosshair
+        # Get target position
+        ty, tx = self.track[episodeT]
+        # Get image shape
+        imh, imw = self.imshape
+        # Normalize crosshair position
+        ncy = cy/(imh - 1)
+        ncx = cx/(imw - 1)
+        # Normalize target position
+        nty = ty/(imh - 1)
+        ntx = tx/(imw - 1)
+        # Get distance to target
+        dist2targ = np.linalg.norm(self.crosshair - self.track[episodeT])
+        # Build dict and return
+        return {'crosshair': self.crosshair,
+                'normalized_crosshair': (ncy, ncx),
+                'target': (ty, tx),
+                'normalized_target': (nty, ntx),
+                'distance2target': dist2targ}
+
     @staticmethod
     def crosshair_image(imshape, coordinates, size=8, smooth=0):
         """
