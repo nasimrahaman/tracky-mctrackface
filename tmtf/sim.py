@@ -229,7 +229,7 @@ class FlySimulator(Simulator):
         nty = ty/(imh - 1)
         ntx = tx/(imw - 1)
         # Get distance to target
-        dist2targ = np.linalg.norm(self.crosshair - self.track[episodeT])
+        dist2targ = np.linalg.norm(self.crosshair - self.track[self.episodeT])
         # Build dict and return
         return {'crosshair': self.crosshair,
                 'normalized_crosshair': (ncy, ncx),
