@@ -48,10 +48,10 @@ def _build_simple(modelconfig=None):
         numout = modelconfig['numout'] if 'numout' in modelconfig.keys() else 5
 
     # Build
-    network = spl() + scl(5, 32, [9, 9]) + scl(32, 64, [9, 9]) + spl() + cl(64, 128, [5, 5]) + scl(128, 256, [5, 5]) + \
-              cl(256, 512, [5, 5]) + spl() + cl(512, 512, [3, 3]) + scl(512, 512, [3, 3]) + \
-              clv(512, 1024, [8, 8]) + cl(1024, 512, [1, 1]) + cl(512, 256, [1, 1]) + cl(256, 128, [1, 1]) + \
-              cl(128, 64, [1, 1]) + cl(64, 16, [1, 1]) + cll(16, numout, [1, 1])
+    network = spl() + scl(5, 32, [9, 9]) + drl() + scl(32, 64, [9, 9]) + spl() + cl(64, 128, [5, 5]) + drl() + scl(128, 256, [5, 5]) + \
+              cl(256, 512, [5, 5]) + spl() + cl(512, 512, [3, 3]) + drl() + scl(512, 512, [3, 3]) + \
+              clv(512, 1024, [8, 8]) + drl() + cl(1024, 512, [1, 1]) + drl() + cl(512, 256, [1, 1]) + drl() + cl(256, 128, [1, 1]) + \
+              cl(128, 64, [1, 1]) + drl() + cl(64, 16, [1, 1]) + drl() + cll(16, numout, [1, 1])
 
     # Build graph
     network.feedforward()
@@ -83,7 +83,7 @@ def simple(modelconfig=None):
     # Compute loss and cost
     # network.y.shape = (bs, numout, 1, 1). Compute mean along all axes.
     network.L = ((T.max(T.flatten(network.y, outdim=2), axis=1) - network.yt)**2).mean()
-    network.baggage["l2"] = nt.lp(network.params, [(2, 0.0005)])
+    network.baggage["l2"] = nt.lp(network.params, [(2, 0.0)])
     network.C = network.L + network.baggage["l2"]
     # Compute gradients
     network.dC = T.grad(network.C, wrt=network.params, disconnected_inputs='warn')
