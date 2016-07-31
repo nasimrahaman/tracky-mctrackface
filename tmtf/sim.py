@@ -219,7 +219,7 @@ class FlySimulator(Simulator):
         # Get crosshair position
         cy, cx = self.crosshair
         # Get target position
-        ty, tx = self.track[episodeT]
+        ty, tx = self.track[self.episodeT]
         # Get image shape
         imh, imw = self.imshape
         # Normalize crosshair position
